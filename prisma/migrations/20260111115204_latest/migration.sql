@@ -1,0 +1,145 @@
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('CASH', 'BANK_TRANSFER', 'CREDIT_CARD', 'DEBIT_CARD', 'PAYPAL', 'STRIPE', 'CHECK', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "ExpenseCategory" AS ENUM ('RENT', 'UTILITIES', 'SALARIES', 'SUPPLIES', 'EQUIPMENT', 'MARKETING', 'TRAVEL', 'INSURANCE', 'TAXES', 'SOFTWARE', 'MAINTENANCE', 'PROFESSIONAL_SERVICES', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "RecurringFrequency" AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY');
+
+-- CreateEnum
+CREATE TYPE "RecurringInvoiceStatus" AS ENUM ('ACTIVE', 'PAUSED', 'COMPLETED');
+
+-- Add enum values with COMMIT between to allow immediate use
+ALTER TYPE "EstimateStatus" ADD VALUE IF NOT EXISTS 'DRAFT';
+ALTER TYPE "EstimateStatus" ADD VALUE IF NOT EXISTS 'SENT';
+ALTER TYPE "EstimateStatus" ADD VALUE IF NOT EXISTS 'VIEWED';
+ALTER TYPE "EstimateStatus" ADD VALUE IF NOT EXISTS 'EXPIRED';
+
+-- AlterTable
+ALTER TABLE "Estimate" ADD COLUMN IF NOT EXISTS "customerId" TEXT,
+ADD COLUMN IF NOT EXISTS "notes" TEXT,
+ADD COLUMN IF NOT EXISTS "userId" TEXT;
+
+-- AlterTable
+ALTER TABLE "Expense" ADD COLUMN IF NOT EXISTS "amount" DOUBLE PRECISION DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "category" "ExpenseCategory" DEFAULT 'OTHER',
+ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS "description" TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS "expenseDate" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS "notes" TEXT,
+ADD COLUMN IF NOT EXISTS "receipt" TEXT,
+ADD COLUMN IF NOT EXISTS "reference" TEXT,
+ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS "userId" TEXT,
+ADD COLUMN IF NOT EXISTS "vendor" TEXT;
+
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "amountPaid" DOUBLE PRECISION DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS "customerId" TEXT,
+ADD COLUMN IF NOT EXISTS "notes" TEXT,
+ADD COLUMN IF NOT EXISTS "subTotal" DOUBLE PRECISION DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS "taxAmount" DOUBLE PRECISION DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS "taxId" TEXT,
+ADD COLUMN IF NOT EXISTS "userId" TEXT;
+
+-- AlterTable
+ALTER TABLE "Tax" ADD COLUMN IF NOT EXISTS "description" TEXT,
+ADD COLUMN IF NOT EXISTS "isDefault" BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS "name" TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS "rate" DOUBLE PRECISION DEFAULT 0;
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "Payment" (
+    "id" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "paymentDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "paymentMethod" "PaymentMethod" NOT NULL,
+    "reference" TEXT,
+    "notes" TEXT,
+    "invoiceId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "RecurringInvoice" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "frequency" "RecurringFrequency" NOT NULL,
+    "status" "RecurringInvoiceStatus" NOT NULL DEFAULT 'ACTIVE',
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "nextInvoiceDate" TIMESTAMP(3) NOT NULL,
+    "dayOfMonth" INTEGER,
+    "dayOfWeek" INTEGER,
+    "dueAfterDays" INTEGER NOT NULL DEFAULT 30,
+    "notes" TEXT,
+    "userId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "generatedCount" INTEGER NOT NULL DEFAULT 0,
+    "lastGeneratedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RecurringInvoice_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "RecurringInvoiceItem" (
+    "id" TEXT NOT NULL,
+    "itemId" TEXT NOT NULL,
+    "recurringInvoiceId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RecurringInvoiceItem_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey (with IF NOT EXISTS workaround)
+DO $$ BEGIN
+    ALTER TABLE "Estimate" ADD CONSTRAINT "Estimate_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Estimate" ADD CONSTRAINT "Estimate_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_taxId_fkey" FOREIGN KEY ("taxId") REFERENCES "Tax"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Payment" ADD CONSTRAINT "Payment_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "Expense" ADD CONSTRAINT "Expense_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "RecurringInvoice" ADD CONSTRAINT "RecurringInvoice_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "RecurringInvoice" ADD CONSTRAINT "RecurringInvoice_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "RecurringInvoiceItem" ADD CONSTRAINT "RecurringInvoiceItem_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "RecurringInvoiceItem" ADD CONSTRAINT "RecurringInvoiceItem_recurringInvoiceId_fkey" FOREIGN KEY ("recurringInvoiceId") REFERENCES "RecurringInvoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
