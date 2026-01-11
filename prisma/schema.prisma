@@ -1,0 +1,243 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String             @id @default(cuid())
+  username          String             @unique
+  email             String             @unique
+  password          String
+  customers         Customer[]
+  taxes             Tax[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  items             Item[]
+  estimates         Estimate[]
+  invoices          Invoice[]
+  recurringInvoices RecurringInvoice[]
+  expenses          Expense[]
+}
+
+model Customer {
+  id                String             @id @default(cuid())
+  companyName       String
+  contactPersonName String?
+  email             String
+  password          String
+  phone             String
+  shippingAddress   String?
+  user              User?              @relation(fields: [userId], references: [id])
+  userId            String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  estimates         Estimate[]
+  invoices          Invoice[]
+  recurringInvoices RecurringInvoice[]
+}
+
+model Tax {
+  id          String    @id @default(cuid())
+  name        String
+  rate        Float
+  description String?
+  isDefault   Boolean   @default(false)
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  invoices    Invoice[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Item {
+  id   String @id @default(cuid())
+  name String
+  user User   @relation(fields: [userId], references: [id])
+
+  price                 Float                  @default(0.00)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  userId                String
+  invoiceItems          InvoiceItem[]
+  recurringInvoiceItems RecurringInvoiceItem[]
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  UNPAID
+  OVERDUE
+  REJECTED
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Estimate {
+  id         String         @id @default(cuid())
+  number     String
+  status     EstimateStatus @default(DRAFT)
+  amountDue  Float          @default(0.00)
+  items      InvoiceItem[]
+  expiryDate DateTime
+  notes      String?
+  user       User           @relation(fields: [userId], references: [id])
+  userId     String
+  customer   Customer       @relation(fields: [customerId], references: [id])
+  customerId String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+model Invoice {
+  id         String        @id @default(cuid())
+  number     String
+  status     InvoiceStatus @default(DRAFT)
+  dueDate    DateTime
+  items      InvoiceItem[]
+  payments   Payment[]
+  subTotal   Float         @default(0.00)
+  taxAmount  Float         @default(0.00)
+  amountDue  Float         @default(0.00)
+  amountPaid Float         @default(0.00)
+  notes      String?
+  user       User          @relation(fields: [userId], references: [id])
+  userId     String
+  customer   Customer      @relation(fields: [customerId], references: [id])
+  customerId String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  tax        Tax?          @relation(fields: [taxId], references: [id])
+  taxId      String?
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  DEBIT_CARD
+  PAYPAL
+  STRIPE
+  CHECK
+  OTHER
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  amount        Float
+  paymentDate   DateTime      @default(now())
+  paymentMethod PaymentMethod
+  reference     String?
+  notes         String?
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
+  invoiceId     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id         String    @id @default(cuid())
+  item       Item      @relation(fields: [itemId], references: [id])
+  itemId     String
+  estimateId String?
+  invoiceId  String?
+  quantity   Int       @default(1)
+  estimate   Estimate? @relation(fields: [estimateId], references: [id])
+  invoice    Invoice?  @relation(fields: [invoiceId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  SALARIES
+  SUPPLIES
+  EQUIPMENT
+  MARKETING
+  TRAVEL
+  INSURANCE
+  TAXES
+  SOFTWARE
+  MAINTENANCE
+  PROFESSIONAL_SERVICES
+  OTHER
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  description String
+  amount      Float
+  category    ExpenseCategory
+  expenseDate DateTime        @default(now())
+  vendor      String?
+  reference   String?
+  notes       String?
+  receipt     String?
+  user        User            @relation(fields: [userId], references: [id])
+  userId      String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum RecurringInvoiceStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model RecurringInvoice {
+  id              String                 @id @default(cuid())
+  name            String
+  frequency       RecurringFrequency
+  status          RecurringInvoiceStatus @default(ACTIVE)
+  startDate       DateTime
+  endDate         DateTime?
+  nextInvoiceDate DateTime
+  dayOfMonth      Int?
+  dayOfWeek       Int?
+  dueAfterDays    Int                    @default(30)
+  notes           String?
+  user            User                   @relation(fields: [userId], references: [id])
+  userId          String
+  customer        Customer               @relation(fields: [customerId], references: [id])
+  customerId      String
+  items           RecurringInvoiceItem[]
+  generatedCount  Int                    @default(0)
+  lastGeneratedAt DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+}
+
+model RecurringInvoiceItem {
+  id                 String           @id @default(cuid())
+  item               Item             @relation(fields: [itemId], references: [id])
+  itemId             String
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id])
+  recurringInvoiceId String
+  quantity           Int              @default(1)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
