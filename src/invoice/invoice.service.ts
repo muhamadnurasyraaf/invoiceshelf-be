@@ -209,20 +209,44 @@ export class InvoiceService {
   async updateStatus(
     id: string,
     userId: string,
-    status:
-      | 'DRAFT'
-      | 'SENT'
-      | 'VIEWED'
-      | 'PAID'
-      | 'UNPAID'
-      | 'OVERDUE'
-      | 'REJECTED',
+    status: 'DRAFT' | 'SENT' | 'VIEWED' | 'COMPLETED' | 'REJECTED',
   ) {
     await this.findOne(id, userId);
 
     return this.prisma.invoice.update({
       where: { id },
       data: { status },
+      include: {
+        items: {
+          include: {
+            item: true,
+          },
+        },
+        customer: true,
+        tax: true,
+      },
+    });
+  }
+
+  async updatePaymentStatus(
+    id: string,
+    userId: string,
+    paymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE',
+  ) {
+    const invoice = await this.findOne(id, userId);
+
+    // If payment status is PAID, also set invoice status to COMPLETED
+    const updateData: {
+      paymentStatus: typeof paymentStatus;
+      status?: 'COMPLETED';
+    } = { paymentStatus };
+    if (paymentStatus === 'PAID') {
+      updateData.status = 'COMPLETED';
+    }
+
+    return this.prisma.invoice.update({
+      where: { id },
+      data: updateData,
       include: {
         items: {
           include: {
@@ -377,17 +401,17 @@ export class InvoiceService {
   }
 
   private formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ms-MY', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'MYR',
     }).format(amount);
   }
 
   private formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('ms-MY', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).format(date);
   }
 }

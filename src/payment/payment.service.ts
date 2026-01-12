@@ -50,16 +50,30 @@ export class PaymentService {
       },
     });
 
-    // Update invoice amountPaid and status
+    // Update invoice amountPaid and paymentStatus
     const newAmountPaid = invoice.amountPaid + amount;
-    const newStatus =
-      newAmountPaid >= invoice.amountDue ? 'PAID' : invoice.status;
+    let newPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' = 'UNPAID';
+    let newStatus:
+      | 'DRAFT'
+      | 'SENT'
+      | 'VIEWED'
+      | 'COMPLETED'
+      | 'REJECTED'
+      | undefined = undefined;
+
+    if (newAmountPaid >= invoice.amountDue) {
+      newPaymentStatus = 'PAID';
+      newStatus = 'COMPLETED'; // Mark invoice as completed when fully paid
+    } else if (newAmountPaid > 0) {
+      newPaymentStatus = 'PARTIAL';
+    }
 
     await this.prisma.invoice.update({
       where: { id: invoiceId },
       data: {
         amountPaid: newAmountPaid,
-        status: newStatus,
+        paymentStatus: newPaymentStatus,
+        ...(newStatus && { status: newStatus }),
       },
     });
 
@@ -152,14 +166,28 @@ export class PaymentService {
         throw new BadRequestException('Payment amount cannot be negative');
       }
 
-      // Update invoice
-      const newStatus = newAmountPaid >= invoice.amountDue ? 'PAID' : 'SENT';
+      // Update invoice paymentStatus
+      let newPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' = 'UNPAID';
+      if (newAmountPaid >= invoice.amountDue) {
+        newPaymentStatus = 'PAID';
+      } else if (newAmountPaid > 0) {
+        newPaymentStatus = 'PARTIAL';
+      }
+
+      // If fully paid, mark as COMPLETED; if was COMPLETED but no longer paid, revert to SENT
+      const statusUpdate =
+        newPaymentStatus === 'PAID'
+          ? { status: 'COMPLETED' as const }
+          : invoice.status === 'COMPLETED'
+            ? { status: 'SENT' as const }
+            : {};
 
       await this.prisma.invoice.update({
         where: { id: payment.invoiceId },
         data: {
           amountPaid: newAmountPaid,
-          status: newStatus,
+          paymentStatus: newPaymentStatus,
+          ...statusUpdate,
         },
       });
     }
@@ -195,14 +223,30 @@ export class PaymentService {
       throw new NotFoundException('Invoice not found');
     }
 
-    const newAmountPaid = invoice.amountPaid - payment.amount;
-    const newStatus = newAmountPaid >= invoice.amountDue ? 'PAID' : 'SENT';
+    const newAmountPaid = Math.max(0, invoice.amountPaid - payment.amount);
+
+    // Determine new payment status
+    let newPaymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' = 'UNPAID';
+    if (newAmountPaid >= invoice.amountDue) {
+      newPaymentStatus = 'PAID';
+    } else if (newAmountPaid > 0) {
+      newPaymentStatus = 'PARTIAL';
+    }
+
+    // If was COMPLETED but no longer fully paid, revert to SENT
+    const statusUpdate =
+      newPaymentStatus === 'PAID'
+        ? {}
+        : invoice.status === 'COMPLETED'
+          ? { status: 'SENT' as const }
+          : {};
 
     await this.prisma.invoice.update({
       where: { id: payment.invoiceId },
       data: {
-        amountPaid: Math.max(0, newAmountPaid),
-        status: newStatus,
+        amountPaid: newAmountPaid,
+        paymentStatus: newPaymentStatus,
+        ...statusUpdate,
       },
     });
 

@@ -72,17 +72,17 @@ export class EmailService {
   }
 
   private formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ms-MY', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'MYR',
     }).format(amount);
   }
 
   private formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('ms-MY', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).format(date);
   }
 

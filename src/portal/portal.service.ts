@@ -32,13 +32,13 @@ export class PortalService {
 
     const amountDue = invoices
       .filter((inv) =>
-        ['SENT', 'VIEWED', 'UNPAID', 'OVERDUE'].includes(inv.status),
+        ['UNPAID', 'PARTIAL', 'OVERDUE'].includes(inv.paymentStatus),
       )
       .reduce((sum, inv) => sum + (inv.amountDue - inv.amountPaid), 0);
 
     const dueInvoices = invoices
       .filter((inv) =>
-        ['SENT', 'VIEWED', 'UNPAID', 'OVERDUE'].includes(inv.status),
+        ['UNPAID', 'PARTIAL', 'OVERDUE'].includes(inv.paymentStatus),
       )
       .sort(
         (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),

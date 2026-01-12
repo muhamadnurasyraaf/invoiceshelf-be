@@ -324,11 +324,11 @@ export class ReportsService {
       const outstanding = totalInvoiced - totalPaid;
       const invoiceCount = customer.invoices.length;
       const paidInvoices = customer.invoices.filter(
-        (inv) => inv.status === 'PAID',
+        (inv) => inv.paymentStatus === 'PAID',
       ).length;
       const overdueInvoices = customer.invoices.filter(
         (inv) =>
-          inv.status !== 'PAID' &&
+          inv.paymentStatus !== 'PAID' &&
           inv.status !== 'DRAFT' &&
           new Date(inv.dueDate) < new Date(),
       ).length;
@@ -542,9 +542,9 @@ export class ReportsService {
 
   // PDF Generation Methods
   private formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ms-MY', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'MYR',
     }).format(amount);
   }
 
@@ -618,11 +618,9 @@ export class ReportsService {
           .fillColor('#059669')
           .text(this.formatCurrency(row.income), x, y, { width: colWidths[1] });
         x += colWidths[1];
-        doc
-          .fillColor('#dc2626')
-          .text(this.formatCurrency(row.expenses), x, y, {
-            width: colWidths[2],
-          });
+        doc.fillColor('#dc2626').text(this.formatCurrency(row.expenses), x, y, {
+          width: colWidths[2],
+        });
         x += colWidths[2];
         doc
           .fillColor(row.profit >= 0 ? '#059669' : '#dc2626')

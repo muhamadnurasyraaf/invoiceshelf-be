@@ -14,8 +14,13 @@ import {
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { InvoiceService } from './invoice.service';
+import { EmailService } from '../email/email.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
-import { UpdateInvoiceDto, InvoiceStatus } from './dto/update-invoice.dto';
+import {
+  UpdateInvoiceDto,
+  InvoiceStatus,
+  PaymentStatus,
+} from './dto/update-invoice.dto';
 
 interface AuthRequest {
   user: { id: string };
@@ -23,12 +28,20 @@ interface AuthRequest {
 
 @Controller('invoices')
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly emailService: EmailService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Request() req: AuthRequest, @Body() dto: CreateInvoiceDto) {
-    return this.invoiceService.create(req.user.id, dto);
+  async create(@Request() req: AuthRequest, @Body() dto: CreateInvoiceDto) {
+    const invoice = await this.invoiceService.create(req.user.id, dto);
+
+    // Send invoice email and set status to SENT
+    await this.emailService.sendInvoiceEmailDirect(invoice.id);
+
+    return invoice;
   }
 
   @Get()
@@ -61,6 +74,20 @@ export class InvoiceController {
     @Body('status') status: InvoiceStatus,
   ) {
     return this.invoiceService.updateStatus(id, req.user.id, status);
+  }
+
+  @Patch(':id/payment-status')
+  @UseGuards(JwtAuthGuard)
+  updatePaymentStatus(
+    @Param('id') id: string,
+    @Request() req: AuthRequest,
+    @Body('paymentStatus') paymentStatus: PaymentStatus,
+  ) {
+    return this.invoiceService.updatePaymentStatus(
+      id,
+      req.user.id,
+      paymentStatus,
+    );
   }
 
   @Delete(':id')

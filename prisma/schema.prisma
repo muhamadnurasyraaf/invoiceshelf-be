@@ -73,10 +73,15 @@ enum InvoiceStatus {
   DRAFT
   SENT
   VIEWED
-  PAID
-  UNPAID
-  OVERDUE
+  COMPLETED
   REJECTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  OVERDUE
 }
 
 enum EstimateStatus {
@@ -105,25 +110,26 @@ model Estimate {
 }
 
 model Invoice {
-  id         String        @id @default(cuid())
-  number     String
-  status     InvoiceStatus @default(DRAFT)
-  dueDate    DateTime
-  items      InvoiceItem[]
-  payments   Payment[]
-  subTotal   Float         @default(0.00)
-  taxAmount  Float         @default(0.00)
-  amountDue  Float         @default(0.00)
-  amountPaid Float         @default(0.00)
-  notes      String?
-  user       User          @relation(fields: [userId], references: [id])
-  userId     String
-  customer   Customer      @relation(fields: [customerId], references: [id])
-  customerId String
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  tax        Tax?          @relation(fields: [taxId], references: [id])
-  taxId      String?
+  id            String        @id @default(cuid())
+  number        String
+  status        InvoiceStatus @default(DRAFT)
+  paymentStatus PaymentStatus @default(UNPAID)
+  dueDate       DateTime
+  items         InvoiceItem[]
+  payments      Payment[]
+  subTotal      Float         @default(0.00)
+  taxAmount     Float         @default(0.00)
+  amountDue     Float         @default(0.00)
+  amountPaid    Float         @default(0.00)
+  notes         String?
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  customerId    String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tax           Tax?          @relation(fields: [taxId], references: [id])
+  taxId         String?
 }
 
 enum PaymentMethod {

@@ -13,10 +13,15 @@ export enum InvoiceStatus {
   DRAFT = 'DRAFT',
   SENT = 'SENT',
   VIEWED = 'VIEWED',
-  PAID = 'PAID',
-  UNPAID = 'UNPAID',
-  OVERDUE = 'OVERDUE',
+  COMPLETED = 'COMPLETED',
   REJECTED = 'REJECTED',
+}
+
+export enum PaymentStatus {
+  UNPAID = 'UNPAID',
+  PARTIAL = 'PARTIAL',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
 }
 
 export class UpdateInvoiceDto {
@@ -43,6 +48,10 @@ export class UpdateInvoiceDto {
   @IsEnum(InvoiceStatus)
   @IsOptional()
   status?: InvoiceStatus;
+
+  @IsEnum(PaymentStatus)
+  @IsOptional()
+  paymentStatus?: PaymentStatus;
 
   @IsArray()
   @ValidateNested({ each: true })

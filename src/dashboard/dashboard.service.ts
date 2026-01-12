@@ -98,7 +98,7 @@ export class DashboardService {
     // Overdue invoices
     const overdueInvoices = invoices.filter(
       (inv) =>
-        inv.status !== 'PAID' &&
+        inv.paymentStatus !== 'PAID' &&
         inv.status !== 'DRAFT' &&
         new Date(inv.dueDate) < new Date(),
     );
@@ -128,11 +128,7 @@ export class DashboardService {
     };
   }
 
-  private calculateMonthlyData(
-    invoices: any[],
-    expenses: any[],
-    year: number,
-  ) {
+  private calculateMonthlyData(invoices: any[], expenses: any[], year: number) {
     const months = [
       'Jan',
       'Feb',
