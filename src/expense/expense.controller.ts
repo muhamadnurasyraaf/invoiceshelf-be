@@ -20,22 +20,22 @@ export class ExpenseController {
 
   @Post()
   create(@Request() req, @Body() createExpenseDto: CreateExpenseDto) {
-    return this.expenseService.create(req.user.sub, createExpenseDto);
+    return this.expenseService.create(req.user.id, createExpenseDto);
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.expenseService.findAll(req.user.sub);
+    return this.expenseService.findAll(req.user.id);
   }
 
   @Get('summary')
   getSummary(@Request() req) {
-    return this.expenseService.getSummary(req.user.sub);
+    return this.expenseService.getSummary(req.user.id);
   }
 
   @Get(':id')
   findOne(@Request() req, @Param('id') id: string) {
-    return this.expenseService.findOne(req.user.sub, id);
+    return this.expenseService.findOne(req.user.id, id);
   }
 
   @Put(':id')
@@ -44,11 +44,11 @@ export class ExpenseController {
     @Param('id') id: string,
     @Body() updateExpenseDto: UpdateExpenseDto,
   ) {
-    return this.expenseService.update(req.user.sub, id, updateExpenseDto);
+    return this.expenseService.update(req.user.id, id, updateExpenseDto);
   }
 
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
-    return this.expenseService.remove(req.user.sub, id);
+    return this.expenseService.remove(req.user.id, id);
   }
 }

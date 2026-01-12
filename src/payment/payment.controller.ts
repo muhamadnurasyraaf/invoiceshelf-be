@@ -20,27 +20,27 @@ export class PaymentController {
 
   @Post()
   create(@Request() req, @Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentService.create(req.user.sub, createPaymentDto);
+    return this.paymentService.create(req.user.id, createPaymentDto);
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.paymentService.findAll(req.user.sub);
+    return this.paymentService.findAll(req.user.id);
   }
 
   @Get('summary')
   getSummary(@Request() req) {
-    return this.paymentService.getPaymentSummary(req.user.sub);
+    return this.paymentService.getPaymentSummary(req.user.id);
   }
 
   @Get('invoice/:invoiceId')
   findByInvoice(@Request() req, @Param('invoiceId') invoiceId: string) {
-    return this.paymentService.findByInvoice(req.user.sub, invoiceId);
+    return this.paymentService.findByInvoice(req.user.id, invoiceId);
   }
 
   @Get(':id')
   findOne(@Request() req, @Param('id') id: string) {
-    return this.paymentService.findOne(req.user.sub, id);
+    return this.paymentService.findOne(req.user.id, id);
   }
 
   @Put(':id')
@@ -49,11 +49,11 @@ export class PaymentController {
     @Param('id') id: string,
     @Body() updatePaymentDto: UpdatePaymentDto,
   ) {
-    return this.paymentService.update(req.user.sub, id, updatePaymentDto);
+    return this.paymentService.update(req.user.id, id, updatePaymentDto);
   }
 
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
-    return this.paymentService.remove(req.user.sub, id);
+    return this.paymentService.remove(req.user.id, id);
   }
 }

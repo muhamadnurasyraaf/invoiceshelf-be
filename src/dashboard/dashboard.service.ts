@@ -6,6 +6,8 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   async getStats(userId: string) {
+    console.log('Dashboard getStats called with userId:', userId);
+
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
     const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59);
@@ -15,6 +17,8 @@ export class DashboardService {
       where: { userId },
       include: { payments: true },
     });
+
+    console.log('Found invoices:', invoices.length);
 
     // Get all expenses for the user
     const expenses = await this.prisma.expense.findMany({
