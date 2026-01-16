@@ -18,6 +18,7 @@ import { DashboardModule } from './dashboard';
 import { TaxModule } from './tax';
 import { PortalModule } from './portal/portal.module';
 import { ReportsModule } from './reports/reports.module';
+import { OcrModule } from './ocr';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ReportsModule } from './reports/reports.module';
     TaxModule,
     PortalModule,
     ReportsModule,
+    OcrModule,
   ],
   controllers: [AppController],
   providers: [AppService],
