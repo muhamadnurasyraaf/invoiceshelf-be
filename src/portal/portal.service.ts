@@ -195,6 +195,13 @@ export class PortalService {
         id: estimateId,
         customerId,
       },
+      include: {
+        items: {
+          include: {
+            item: true,
+          },
+        },
+      },
     });
 
     if (!estimate) {
@@ -207,7 +214,8 @@ export class PortalService {
       );
     }
 
-    return this.prisma.estimate.update({
+    // Update estimate status to ACCEPTED
+    const updatedEstimate = await this.prisma.estimate.update({
       where: { id: estimateId },
       data: { status: 'ACCEPTED' },
       include: {
@@ -219,6 +227,66 @@ export class PortalService {
         },
       },
     });
+
+    // Automatically convert to invoice
+    await this.convertEstimateToInvoice(estimate);
+
+    return updatedEstimate;
+  }
+
+  private async convertEstimateToInvoice(estimate: {
+    id: string;
+    userId: string;
+    customerId: string;
+    amountDue: number;
+    notes: string | null;
+    items: Array<{
+      itemId: string;
+      quantity: number;
+    }>;
+  }) {
+    // Generate invoice number
+    const invoiceCount = await this.prisma.invoice.count({
+      where: { userId: estimate.userId },
+    });
+    const invoiceNumber = `INV-${String(invoiceCount + 1).padStart(4, '0')}`;
+
+    // Calculate due date (30 days from now)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    // Create the invoice from estimate data
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        number: invoiceNumber,
+        userId: estimate.userId,
+        customerId: estimate.customerId,
+        dueDate,
+        notes: estimate.notes,
+        subTotal: estimate.amountDue,
+        taxAmount: 0,
+        amountDue: estimate.amountDue,
+        amountPaid: 0,
+        status: 'SENT',
+        paymentStatus: 'UNPAID',
+        items: {
+          create: estimate.items.map((item) => ({
+            itemId: item.itemId,
+            quantity: item.quantity,
+          })),
+        },
+      },
+      include: {
+        customer: true,
+        items: {
+          include: {
+            item: true,
+          },
+        },
+      },
+    });
+
+    return invoice;
   }
 
   async rejectEstimate(customerId: string, estimateId: string) {
