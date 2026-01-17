@@ -96,7 +96,7 @@ enum EstimateStatus {
 model Estimate {
   id         String         @id @default(cuid())
   number     String
-  status     EstimateStatus @default(DRAFT)
+  status     EstimateStatus @default(SENT)
   amountDue  Float          @default(0.00)
   items      InvoiceItem[]
   expiryDate DateTime

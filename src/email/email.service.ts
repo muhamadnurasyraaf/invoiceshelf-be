@@ -56,7 +56,7 @@ export class EmailService {
           {{#if customMessage}}<p>{{customMessage}}</p>{{/if}}
           <p><strong>Amount Due:</strong> {{totalAmount}}</p>
           <p><strong>Due Date:</strong> {{dueDate}}</p>
-          <p><a href="{{invoiceUrl}}">View Invoice</a> | <a href="{{downloadUrl}}">Download PDF</a></p>
+          <p><a href="{{downloadUrl}}">Download PDF</a></p>
           <p>Thank you for your business!</p>
         </body>
       </html>
