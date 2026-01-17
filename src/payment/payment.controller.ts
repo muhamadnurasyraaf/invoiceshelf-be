@@ -8,7 +8,10 @@ import {
   Delete,
   UseGuards,
   Request,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -41,6 +44,25 @@ export class PaymentController {
   @Get(':id')
   findOne(@Request() req, @Param('id') id: string) {
     return this.paymentService.findOne(req.user.id, id);
+  }
+
+  @Get(':id/receipt')
+  async downloadReceipt(
+    @Request() req,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const pdfBuffer = await this.paymentService.generateReceipt(
+      req.user.id,
+      id,
+    );
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="receipt-${id.slice(-8)}.pdf"`,
+    });
+
+    return new StreamableFile(pdfBuffer);
   }
 
   @Put(':id')

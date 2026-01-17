@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto';
+import PDFDocument from 'pdfkit';
 
 @Injectable()
 export class PaymentService {
@@ -282,5 +283,205 @@ export class PaymentService {
       paymentCount: payments.length,
       byMethod,
     };
+  }
+
+  async generateReceipt(userId: string, id: string): Promise<Buffer> {
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id,
+        invoice: {
+          userId,
+        },
+      },
+      include: {
+        invoice: {
+          include: {
+            customer: true,
+            user: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // Header
+      doc
+        .fontSize(24)
+        .fillColor('#10b981')
+        .text('PAYMENT RECEIPT', { align: 'right' });
+      doc
+        .fontSize(10)
+        .fillColor('#6b7280')
+        .text(`Receipt #${id.slice(-8).toUpperCase()}`, { align: 'right' });
+      doc.moveDown(2);
+
+      // From section
+      doc.fontSize(10).fillColor('#6b7280').text('From:');
+      doc.fontSize(12).fillColor('#1f2937').text(payment.invoice.user.username);
+      doc.moveDown();
+
+      // Received From section
+      doc.fontSize(10).fillColor('#6b7280').text('Received From:');
+      doc
+        .fontSize(12)
+        .fillColor('#1f2937')
+        .text(payment.invoice.customer.companyName);
+      if (payment.invoice.customer.contactPersonName) {
+        doc
+          .fontSize(10)
+          .fillColor('#6b7280')
+          .text(payment.invoice.customer.contactPersonName);
+      }
+      doc
+        .fontSize(10)
+        .fillColor('#6b7280')
+        .text(payment.invoice.customer.email);
+      doc.moveDown(2);
+
+      // Payment details box
+      const boxTop = doc.y;
+      doc
+        .rect(50, boxTop, 500, 120)
+        .fillColor('#f0fdf4')
+        .fill()
+        .strokeColor('#10b981')
+        .lineWidth(1)
+        .stroke();
+
+      doc.fillColor('#1f2937');
+      let y = boxTop + 15;
+
+      // Invoice Reference
+      doc.fontSize(10).fillColor('#6b7280').text('Invoice Reference:', 70, y);
+      doc
+        .fontSize(12)
+        .fillColor('#1f2937')
+        .text(payment.invoice.number, 200, y);
+      y += 25;
+
+      // Payment Date
+      doc.fontSize(10).fillColor('#6b7280').text('Payment Date:', 70, y);
+      doc
+        .fontSize(12)
+        .fillColor('#1f2937')
+        .text(this.formatDate(payment.paymentDate), 200, y);
+      y += 25;
+
+      // Payment Method
+      doc.fontSize(10).fillColor('#6b7280').text('Payment Method:', 70, y);
+      doc
+        .fontSize(12)
+        .fillColor('#1f2937')
+        .text(this.formatPaymentMethod(payment.paymentMethod), 200, y);
+      y += 25;
+
+      // Reference (if available)
+      if (payment.reference) {
+        doc.fontSize(10).fillColor('#6b7280').text('Reference:', 70, y);
+        doc.fontSize(12).fillColor('#1f2937').text(payment.reference, 200, y);
+      }
+
+      doc.y = boxTop + 140;
+      doc.moveDown();
+
+      // Amount section
+      doc.rect(50, doc.y, 500, 60).fillColor('#10b981').fill();
+
+      const amountBoxY = doc.y + 15;
+      doc
+        .fontSize(14)
+        .fillColor('#ffffff')
+        .text('Amount Received:', 70, amountBoxY);
+      doc
+        .fontSize(24)
+        .fillColor('#ffffff')
+        .text(this.formatCurrency(payment.amount), 70, amountBoxY + 20);
+
+      doc.y = doc.y + 80;
+      doc.moveDown();
+
+      // Invoice Summary
+      doc.fontSize(12).fillColor('#1f2937').text('Invoice Summary:', 50, doc.y);
+      doc.moveDown(0.5);
+
+      const summaryY = doc.y;
+      doc.fontSize(10).fillColor('#6b7280');
+      doc.text('Invoice Total:', 70, summaryY);
+      doc
+        .fillColor('#1f2937')
+        .text(this.formatCurrency(payment.invoice.amountDue), 200, summaryY);
+
+      doc.fillColor('#6b7280').text('Amount Paid:', 70, summaryY + 20);
+      doc
+        .fillColor('#1f2937')
+        .text(
+          this.formatCurrency(payment.invoice.amountPaid),
+          200,
+          summaryY + 20,
+        );
+
+      const remainingBalance =
+        payment.invoice.amountDue - payment.invoice.amountPaid;
+      doc.fillColor('#6b7280').text('Remaining Balance:', 70, summaryY + 40);
+      doc
+        .fillColor(remainingBalance > 0 ? '#ef4444' : '#10b981')
+        .text(this.formatCurrency(remainingBalance), 200, summaryY + 40);
+
+      // Notes
+      if (payment.notes) {
+        doc.y = summaryY + 70;
+        doc.fontSize(10).fillColor('#6b7280').text('Notes:', 50, doc.y);
+        doc
+          .fillColor('#1f2937')
+          .text(payment.notes, 50, doc.y + 15, { width: 500 });
+      }
+
+      // Footer
+      doc.fontSize(10).fillColor('#6b7280');
+      doc.text('Thank you for your payment!', 50, 700, {
+        align: 'center',
+        width: 500,
+      });
+
+      doc.end();
+    });
+  }
+
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('ms-MY', {
+      style: 'currency',
+      currency: 'MYR',
+    }).format(amount);
+  }
+
+  private formatDate(date: Date): string {
+    return new Intl.DateTimeFormat('ms-MY', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(date);
+  }
+
+  private formatPaymentMethod(method: string): string {
+    const methods: Record<string, string> = {
+      CASH: 'Cash',
+      BANK_TRANSFER: 'Bank Transfer',
+      CREDIT_CARD: 'Credit Card',
+      DEBIT_CARD: 'Debit Card',
+      CHEQUE: 'Cheque',
+      OTHER: 'Other',
+    };
+    return methods[method] || method;
   }
 }
