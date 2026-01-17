@@ -14,7 +14,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['https://invoiceshelf-fe.vercel.app', 'http://localhost:3000'],
+    origin: ['https://vx-invoice.vercel.app', 'http://localhost:3000'],
     credentials: true,
   });
 
